@@ -1,0 +1,23 @@
+{%extends 'base.html'%}
+{%set title="Settings"%}
+{%block body%}
+<div class="container-fluid">
+    <table class="table table-dark table-striped mt-5">
+        <thead>
+            <tr>
+                <th scope="col" colspan="2">Settings</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for setting in settings%}
+            <tr>
+                <td>{{setting}}</td>
+                <td>
+                    <input type="text" id="{{setting}}" name="{{setting}}">{{settings[setting]}}</input>
+                </td>
+            </tr>
+            {%endfor%}
+        </tbody>
+    </table>
+</div>
+{%endblock%}
