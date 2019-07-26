@@ -1,2 +1,2 @@
 download_dir = 'downloads'
-api_key = 'PLACE_YOUR_GOOGLE_YOUTUBE_API_KEY_HERE'
+youtube_apikey = 'PLACE_YOUR_GOOGLE_YOUTUBE_API_KEY_HERE'
