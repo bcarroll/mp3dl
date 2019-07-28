@@ -1,22 +1,25 @@
-from flask import Flask, render_template, request, url_for, jsonify
-from config import youtube_apikey
-from youtube_api import YoutubeAPI
+import logging
+from flask import Flask, render_template, request, url_for, jsonify, flash, redirect
+from youtube_api import YoutubeGAPI
+from os import urandom
 
-from os.path import isdir, isfile
+logging.basicConfig(level=logging.DEBUG)
 
 config = {
-        'api_key': youtube_apikey,
-        'download_dir': 'downloads'
+        'download_dir': 'downloads',
+        'ffmpeg_binary': 'ffmpeg.exe'
     }
 
 app = Flask(__name__)
-yt = YoutubeAPI(key=youtube_apikey)
+app.config['SECRET_KEY'] = urandom(16)
+yt = YoutubeGAPI(config=config)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    if yt.FFMPEG_BIN is None:
+        flash('ffmpeg_binary setting must contain the location of the ffmpeg executable')
+        return redirect(url_for('settings', config=config))
     if request.method == 'GET':
-        if config['api_key'] is None or config['api_key'] == "":
-            return render_template('settings.html', settings=config)
         return render_template('index.html')
     elif request.method == 'POST':
         results=yt.search( request.form['search'] )
@@ -33,10 +36,9 @@ def settings():
         #TODO: Update config
         return redirect(url_for('settings'))
 
-@app.route('/validate_config', methods=['GET'])
-def validate_config():
-    return jsonify(config)
-
+@app.route('/download/<string:id>', methods=['GET', 'POST'])
+def download(id):
+    return jsonify( yt.download(id) )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=1025, debug=True)
