@@ -1,5 +1,10 @@
 {%extends 'base.html'%}
 {%set title='MP3 Downloader'%}
+{%block head%}
+#player {
+    top: 10px;    
+}
+{%endblock%}
 {%block body%}
 <div class="container-fluid">
 {% if results %}
@@ -8,20 +13,19 @@
         <tr>
             <th scope="col"></th>
             <th scope="col">Title</th>
-            <th scope="col">Date Published</th>
-            <th scope="col"></th>
             <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
     {% for result in results %}
     <tr>
-        <td scope="row"><img src="{{results[result]['img']['url']}}"></td>
+        <td scope="row"><img id="img_btn_{{result}}" src="{{results[result]['img']}}"></td>
         <td>{{results[result]['title']}}</td>
-        <td>{{results[result]['published']}}</td>
         <td>
             <button id="dl_{{result}}" class="btn btn-primary">Download</button><br/>
+            <!--
             <button id="btn_{{result}}" class="btn btn-secondary" value="{{result}}">Play</button>
+            -->
         </td>
     </tr>
     {%endfor%}
@@ -29,21 +33,43 @@
 </table>
 {%endif%}
 </div>
-<iframe id="player" width="0" height="0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+<iframe id="player" width="0" height="0" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 {%endblock%}
 {%block script%}
 <script>
+    $.ajaxSetup({'cache' : false});
+    function download(resource, element){
+        $(element).text('Downloading');
+	    $.get(resource, function(result){
+            console.log(result);
+            $(element).text('Downloaded');
+        });
+    }
+
+    $('button[id^="dl_"]').click(function(e){
+        var button = $('#' + this.id);
+        var url = '/download/' + this.id.replace('dl_', '');
+        // send request to url
+        download(url, button);
+    });
+
     $('button[id^="btn_"]').click(function(e){
         var button = $('#' + this.id);
+        var image_position = $('#img_' + this.id).offset();
+        console.log(image_position);
+        $('#player').css('top', image_position['top']);
+        $('#player').attr('width', 120);
+        $('#player').attr('height', 120);
         var url = '';
         if (button.text() == 'Play'){
             var id = button.val();
-            url = 'https://www.youtube.com/embed/' + id + '?autoplay=1';
+            url = 'https://www.youtube.com/embed/' + id + '?autoplay=1'
+            $('button[id^="btn_"]').text("Play");
             button.text("Stop");
         } else {
             button.text("Play");
         }
         $('#player').attr('src', url);
-    })
+    });
 </script>
 {%endblock%}
