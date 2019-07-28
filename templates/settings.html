@@ -9,11 +9,11 @@
             </tr>
         </thead>
         <tbody>
-            {% for setting in settings%}
+            {%for setting in settings%}
             <tr>
                 <td>{{setting}}</td>
                 <td>
-                    <input type="text" id="{{setting}}" name="{{setting}}">{{settings[setting]}}</input>
+                    <input type="text" id="{{setting}}" name="{{setting}}" value="{{settings[setting]}}"></input>
                 </td>
             </tr>
             {%endfor%}
