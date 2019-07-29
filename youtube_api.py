@@ -1,5 +1,7 @@
 import logging
-from os.path import isdir, isfile, join as path_join
+from os.path import isdir
+from os.path import isfile
+from os.path import join as path_join
 from os import makedirs
 from httplib2 import ssl
 
@@ -8,11 +10,15 @@ from urllib.parse import quote
 from bs4 import BeautifulSoup
 
 from pafy import new as PAFY
-import subprocess as sp
+import threading
+
+from conversion import convert_to_mp3
 
 class YoutubeGAPI():
     """ Ghetto version of YoutubeAPI (web scraping instead of Google API calls) """
     log = logging.getLogger('YoutubeGAPI')
+    threads = []
+    download = {}
     def __init__(self, config=None):
         self.thumbnail_url = config.get('thumbnail_url', 'https://i.ytimg.com/vi/VIDEOID/default.jpg')
         self.search_url    = config.get('search_url', 'https://www.youtube.com/results?search_query=')
@@ -39,10 +45,6 @@ class YoutubeGAPI():
         SSLcontext = None;
         self.log.debug('search(%s, maxResults=%s, media_type=%s)' % (input,maxResults, media_type) )
         results = {}
-        # results[VIDEOID]["title"]
-        # results[VIDEOID]["published"]
-        # results[VIDEOID]["description"]
-        # results[VIDEOID]["img"]
         response = urlopen(self.search_url + quote(input), context=self.SSLcontext)
         html = response.read()
         soup = BeautifulSoup(html, 'html.parser')
@@ -71,21 +73,39 @@ class YoutubeGAPI():
         return False
 
     def download(self, id):
+        #thread = threading.Thread(target=YoutubeGAPI.do_download, args=(self,id,))
+        #self.threads.append(thread)
+        #thread.start()
+        return self.do_download(id)
+
+    def dlProgress(self, totalBytes, dlBytes, dlPercent, dlRate, eta):
+        print(totalBytes, dlBytes, dlPercent*100, dlRate, eta)
+        # self.download
+        # total bytes in stream, int
+        # total bytes downloaded, int
+        # ratio downloaded (0-1), float
+        # download rate (kbps), float
+        # ETA in seconds, float
+
+    def do_download(self, id):
         url = 'https://www.youtube.com/watch?v=' + id
-        video = PAFY(url)
+        video = PAFY(url, basic=False)
         bestaudio = video.getbestaudio()
         title = bestaudio.title.replace(' ', '_')
         dlpath = self.get_dlpath(title)
         if dlpath == 'exists':
+            logging.warn("Download exists: %s"  % title + '.mp3')
             return '{"status": "Download already exists"}'
         else:
-            bestaudio.download(filepath=dlpath)
-            result = self.convert_to_mp3(dlpath, title, bitrate=bestaudio.bitrate)
+            logging.debug("Downloading to %s" % dlpath + '.mp3')
+            bestaudio.download(filepath=dlpath, callback=self.dlProgress)
+            #result = self.convert_to_mp3(dlpath, title, bitrate=bestaudio.bitrate)
+            result = convert_to_mp3(ffmpeg=self.FFMPEG_BIN, inFile=dlpath, bitrate=bestaudio.bitrate)
             return '{"status":"%s"}' % result
     
     def get_dlpath(self, title):
-        dlpath = path_join(self.download_dir, title + '.mp3')
-        if isfile(dlpath):
+        dlpath = path_join(self.download_dir, title)
+        if isfile(dlpath + '.mp3') or isfile(dlpath + '.temp') or isfile(dlpath):
             return "exists"
         else:
             return dlpath
@@ -102,40 +122,40 @@ class YoutubeGAPI():
 
 
 #####################################################
-    def convert_to_mp3(self, path, filename, bitrate='192k'):
-        """
-        Converts a input file to mp3
-        command: ffmpeg -n -i input.m4a -acodec libmp3lame -ab 128k output.mp3
-        """
-        codec = "libmp3lame"
-        mp3_filename = filename + ".mp3"
-        command = [self.FFMPEG_BIN,
-                   "-n",
-                   "-i", path,
-                   "-acodec", codec,
-                   "-ab", bitrate,
-                   mp3_filename
-                   ]
-        return self._convert(command)
+    # def convert_to_mp3(self, path, filename, bitrate='192k'):
+    #     """
+    #     Converts a input file to mp3
+    #     command: ffmpeg -n -i input.m4a -acodec libmp3lame -ab 128k output.mp3
+    #     """
+    #     codec = "libmp3lame"
+    #     mp3_filename = filename + ".mp3"
+    #     command = [self.FFMPEG_BIN,
+    #                "-n",
+    #                "-i", path,
+    #                "-acodec", codec,
+    #                "-ab", bitrate,
+    #                path_join(self.download_dir, mp3_filename)
+    #                ]
+    #     return self._convert(command)
 
-    def _convert(self, command):
-        """
-        @param:
-            command: command for conversion
-        """
-        try:
-            proc = sp.Popen(command, stdout=sp.PIPE, bufsize=10**8)
-            proc.wait()
-            if proc.returncode:
-                err = "\n".join(["Audio conversion: %s\n" % cmd,
-                "WARNING: this command returned an error:",
-                err.decode('utf8')])
-                raise IOError(err)
-                return err
-            del proc
-        except IOError as e:
-            self.log.error('{0}'.format(e), exc_info=True)
-            return '{0}'.format(e)
+    # def _convert(self, command):
+    #     """
+    #     @param:
+    #         command: command for conversion
+    #     """
+    #     try:
+    #         proc = sp.Popen(command, stdout=sp.PIPE, bufsize=10**8)
+    #         proc.wait()
+    #         if proc.returncode:
+    #             err = "\n".join(["Audio conversion: %s\n" % command,
+    #             "WARNING: this command returned an error:",
+    #             err.decode('utf8')])
+    #             raise IOError(err)
+    #             return err
+    #         del proc
+    #     except IOError as e:
+    #         self.log.error('{0}'.format(e), exc_info=True)
+    #         return '{0}'.format(e)
 
 if __name__ == '__main__':
     from config import youtube_apikey
