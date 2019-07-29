@@ -7,7 +7,8 @@ A Python Flask web app for downloading audofiles from Youtube using youtube-dl
 ## Quickstart
 ```
 pip install -r requirements.txt
-python app.py
+python mp3dl.py
 ```
 
 Open the Flask app URL in a webbrowser
+Search for something... Click a download button.
