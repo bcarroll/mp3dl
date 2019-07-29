@@ -7,4 +7,4 @@ downloads/*
 venv36/*
 tmp/*
 migrations/*
-app/data.db
+app/data.dat
