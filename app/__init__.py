@@ -1,17 +1,35 @@
 import logging
-from flask import Flask, render_template, request, url_for, jsonify, flash, redirect
-from youtube_api import YoutubeGAPI
+from flask import Flask
+from flask import render_template
+from flask import request
+from flask import url_for
+from flask import jsonify
+from flask import flash
+from flask import redirect
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
 from os import urandom
+from os.path import abspath
+from os.path import dirname
+from os.path import join as path_join
+from os.path import isfile
+
+from youtube_api import YoutubeGAPI
 
 logging.basicConfig(level=logging.DEBUG)
 
-config = {
-        'download_dir': 'downloads',
-        'ffmpeg_binary': 'ffmpeg.exe'
-    }
+basedir = abspath(dirname(__file__))
+
+config = {'download_dir': abspath(path_join(basedir, '..', 'downloads')), 'ffmpeg_binary': path_join(basedir, 'ffmpeg.exe')}
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = urandom(16)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + path_join(basedir, 'data.dat')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+import db
 yt = YoutubeGAPI(config=config)
 
 @app.route('/', methods=['GET', 'POST'])
@@ -39,6 +57,3 @@ def settings():
 @app.route('/download/<string:id>', methods=['GET', 'POST'])
 def download(id):
     return jsonify( yt.download(id) )
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=1025, debug=True)
