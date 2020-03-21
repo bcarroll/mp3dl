@@ -2,7 +2,7 @@
 {%set title='MP3 Downloader'%}
 {%block head%}
 #player {
-    top: 10px;    
+    top: 10px;
 }
 {%endblock%}
 {%block body%}
@@ -20,7 +20,7 @@
     {% for result in results %}
     <tr>
         <td scope="row"><img id="img_btn_{{result}}" src="{{results[result]['img']}}"></td>
-        <td>{{results[result]['title']}}</td>
+        <td id="title_{{result}}">{{results[result]['title']}}</td>
         <td>
             <button id="dl_{{result}}" class="btn btn-primary">Download</button><br/>
             <!--
@@ -49,6 +49,8 @@
     $('button[id^="dl_"]').click(function(e){
         var button = $('#' + this.id);
         var url = '/download/' + this.id.replace('dl_', '');
+        var title = $('#title_' + this.id.replace('dl_', '')).text();
+        url = url + '?title=' + title;
         // send request to url
         download(url, button);
     });

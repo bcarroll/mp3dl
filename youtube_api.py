@@ -14,6 +14,8 @@ import threading
 
 from conversion import convert_to_mp3
 
+from pprint import pprint
+
 class YoutubeGAPI():
     """ Ghetto version of YoutubeAPI (web scraping instead of Google API calls) """
     log = logging.getLogger('YoutubeGAPI')
@@ -29,7 +31,7 @@ class YoutubeGAPI():
         if self.FFMPEG_BIN == '':
             self.FFMPEG_BIN = None
         self.SSLcontext    = None
-        if self.verifySSL is False:    
+        if self.verifySSL is False:
             self.SSLcontext = ssl._create_unverified_context()
         self.log.debug("""YoutubeGAPI parameters:
             config['thumbnail_url'] = %s
@@ -72,11 +74,11 @@ class YoutubeGAPI():
                 return True
         return False
 
-    def download(self, id):
+    def download(self, id, title=None):
         #thread = threading.Thread(target=YoutubeGAPI.do_download, args=(self,id,))
         #self.threads.append(thread)
         #thread.start()
-        return self.do_download(id)
+        return self.do_download(id, title)
 
     def dlProgress(self, totalBytes, dlBytes, dlPercent, dlRate, eta):
         print(totalBytes, dlBytes, dlPercent*100, dlRate, eta)
@@ -87,22 +89,41 @@ class YoutubeGAPI():
         # download rate (kbps), float
         # ETA in seconds, float
 
-    def do_download(self, id):
+    def _incr_title(self, title):
+        num = title[-1]
+        try:
+            # convert num to integer and increment
+            num = int(num) + 1
+        except ValueError:
+            # num is not (text string) convertable to integer
+            num = 1
+        return title + str(num)
+
+    def do_download(self, id, title=None):
         url = 'https://www.youtube.com/watch?v=' + id
         video = PAFY(url, basic=False)
         bestaudio = video.getbestaudio()
-        title = bestaudio.title.replace(' ', '_')
+        if title is None:
+            title = bestaudio.title.replace(' ', '_')
+        else:
+            replacers = ['"', '[', ']', '(', ')',  '!', '~']
+            for r in replacers:
+                if r in title:
+                    #logging.debug('Removing %s from title' % r)
+                    title = title.replace(r, '')
+        if len(title) < 2:
+            title = video.author + '-' + video.videoid
         dlpath = self.get_dlpath(title)
         if dlpath == 'exists':
             logging.warn("Download exists: %s"  % title + '.mp3')
-            return '{"status": "Download already exists"}'
-        else:
-            logging.debug("Downloading to %s" % dlpath + '.mp3')
-            bestaudio.download(filepath=dlpath, callback=self.dlProgress)
-            #result = self.convert_to_mp3(dlpath, title, bitrate=bestaudio.bitrate)
-            result = convert_to_mp3(ffmpeg=self.FFMPEG_BIN, inFile=dlpath, bitrate=bestaudio.bitrate)
-            return '{"status":"%s"}' % result
-    
+            #return '{"status": "Download already exists"}'
+            title = self._incr_title(title)
+        logging.debug("Downloading to %s" % dlpath + '.mp3')
+        bestaudio.download(filepath=dlpath, callback=self.dlProgress)
+        #result = self.convert_to_mp3(dlpath, title, bitrate=bestaudio.bitrate)
+        result = convert_to_mp3(ffmpeg=self.FFMPEG_BIN, inFile=dlpath, bitrate=bestaudio.bitrate)
+        return '{"status":"%s"}' % result
+
     def get_dlpath(self, title):
         dlpath = path_join(self.download_dir, title)
         if isfile(dlpath + '.mp3') or isfile(dlpath + '.temp') or isfile(dlpath):

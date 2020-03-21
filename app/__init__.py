@@ -20,8 +20,9 @@ from youtube_api import YoutubeGAPI
 logging.basicConfig(level=logging.DEBUG)
 
 basedir = abspath(dirname(__file__))
-
 config = {'download_dir': abspath(path_join(basedir, '..', 'downloads')), 'ffmpeg_binary': path_join(basedir, 'ffmpeg.exe')}
+
+from musicFeed import getSongList
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = urandom(16)
@@ -38,7 +39,7 @@ def index():
         flash('ffmpeg_binary setting must contain the location of the ffmpeg executable')
         return redirect(url_for('settings', config=config))
     if request.method == 'GET':
-        return render_template('index.html')
+        return render_template('index.html', results=getSongList())
     elif request.method == 'POST':
         results=yt.search( request.form['search'] )
         return render_template('index.html', results=results)
@@ -56,4 +57,6 @@ def settings():
 
 @app.route('/download/<string:id>', methods=['GET', 'POST'])
 def download(id):
-    return jsonify( yt.download(id) )
+    title = request.args.get('title')
+    logging.debug('Title sent in request: %s' % title)
+    return jsonify( yt.download(id, title=title) )
